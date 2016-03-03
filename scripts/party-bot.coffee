@@ -9,12 +9,9 @@ module.exports = (robot) ->
 
   VCAP = process.env.VCAP_SERVICES
   unless VCAP?
-    console.error  "Missing VCAP_SERVICES in environment. Please set & try again."
+    console.error "Missing VCAP credentials. Please set & try again."
     process.exit(1)
 
-  #unless VCAP["cloudantNoSQLDB"]?
-  #  console.error "Cloudant missing from VCAP_SERVICES.  Please bind & try again."
-  #  process.exit(1)
   console.log(VCAP)
 
   VCAP_OBJ = JSON.parse(VCAP)
@@ -24,6 +21,13 @@ module.exports = (robot) ->
     username: dbCreds.username
     password: dbCreds.password
   db = client.database("party-bot-playlists")
+  db.exists (err, exists) ->
+    if err then console.log('error', err)
+    else if exists then console.log('Database exists.  Proceed as expected')
+    else
+      console.log('Database does not exist.  Creating...')
+      db.create()
+      #TBD Populate Design Documents?
 
   #sanity check for functioning bot responses
   robot.hear /badger/i, (res) ->
@@ -34,6 +38,7 @@ module.exports = (robot) ->
     songRequest = res.match[1]
     message = res.message
     message.date = new Date
+    message.songRequest = songRequest
 
     db.save message, (err, res) ->
       if err then console.error(err)
